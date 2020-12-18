@@ -293,144 +293,41 @@ OSBS_basal_area =  OSBS_diameter_data %>% dplyr::group_by(plotID, disturbance) %
 full_data_CHM_SR_BA = left_join(plots_chmMean_SR, OSBS_basal_area)
 
 ```
-NPP NEXT STEPS
-add collumn before/after disturbance
-average diameter before after?
-growth = after - before
-sum growth per plot (to connect to AOP)
-NPP = growth/ plot area
-  = biomass t2 - biomass t1 -
-
-QUESTIONS
-? plant status
-
-
-```{r}
-library(raster)
-library(rgdal)
-library(ggplot2)
-library(dplyr)
-library(sf)
-install.packages("raster")
-install.packages("devtools")
-devtools::install_github("NEONScience/NEON-geolocation/geoNEON")
-library(geoNEON)
-geonNEON()
-#AOP
-
-#CHM_data = byFileAOP(dpID = "DP3.30015.001", year = c(2016,2017,2018,2019,2020),check.size = F, site= c("OSBS", "JERC", "GUAN", "GRSM"))
-
-NEON_shp <-sf::st_read("data/Field_Sampling_Boundaries_2020/terrestrialSamplingBoundaries.shp")#%>%
-#by site
-st_crs(NEON_shp)
-#CRS is WGS 84
-utm11nCRS <- "+proj=utm +zone=11 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-NEON_shp_utm <- st_transform(NEON_shp , utm11nCRS)
-
-OSBS_shps = dplyr::filter(NEON_shp_utm, siteID == "OSBS")
-JERC_shps = dplyr::filter(NEON_shp_utm, siteID == "JERC")
-
-
-OSBS_bbox <- st_bbox(OSBS_shps)
-OSBS_bbox
-
-JERC_bbox <- st_bbox(JERC_shps)
-JERC_bbox
-
-#pre-huricaine
-byTileAOP(dpID="DP3.30015.001", site="OSBS", 
-          year="2017", easting=c(OSBS_bbox[2],OSBS_bbox[4]),
-          northing=c(OSBS_bbox[1],OSBS_bbox[3]),
-          buffer=20)
 
 
 
 
-#post-huricaine          
-byTileAOP(dpID="DP3.30015.001", site="OSBS", year="2018", 
-         easting=c(OSBS_bbox[2],OSBS_bbox[4]),
-          northing=c(OSBS_bbox[1],OSBS_bbox[3]),
-          buffer=20)
 
-#pre-huricaine
-byTileAOP(dpID="DP3.30015.001", site="JERC", year="2018", 
-         easting=c(JERC_bbox[2],JERC_bbox[4]),
-          northing=c(JERC_bbox[1],JERC_bbox[3]),
-          buffer=20)
-
-#post-huricaine 
-byTileAOP(dpID="DP3.30015.001", site="JERC", year="2019", 
-         easting=c(JERC_bbox[2],JERC_bbox[4]),
-          northing=c(JERC_bbox[1],JERC_bbox[3]),
-          buffer=20)
-          
-          
-         # easting=veg$adjEasting[which(veg$plotID=="WREF_075")], 
-          #northing=veg$adjNorthing[which(veg$plotID=="WREF_075")],
-          #savepath="/data")
-#chm <- raster("/data/DP3.30015.001/2017/FullSite/D16/2017_WREF_1/L3/DiscreteLidar/CanopyHeightModelGtif/NEON_D16_WREF_DP3_580000_5075000_CHM.tif")
-
-#with shape use filter to find site
-#Ccheck RS
-#extract x=
-
-#SOAP_fpCHM <- raster::extract(x = raster_file, y = shape_file, df = TRUE) #to get values
-
-
-#plot(chm, col=topo.colors(5))
-
-
-```
-
-```{r}
-#species richness diversity
-
-#library(vegan)
-#vegandocs("intro-vegan")
-#vegandocs("diversity-vegan")
-
-#merge so only species included in from 
-# species richness by plot, probably only need to look at once
-
-diversity_data_test =  vst_mappingandtagging%>%
-  dplyr::select(date, domainID, siteID, plotID, individualID, taxonID)%>%mutate( year = format(date, "%Y"))#%>%
-#  group_by( plotID)%>%
-#  mutate(species_rich = n_distinct(taxonID))
-
-aggregate_SR <- aggregate(data=diversity_data,  taxonID ~ plotID,  function(x) length(unique(x)))
-colnames(aggregate_SR) <- c("plotID", "species_richness")
-species_rich_data = join(diversity_data, aggregate_SR, by="plotID")
-
-#merge(diversity_data, agg, by="plotID", all=TRUE)
-
-
-
-#mutate(species_rich = unique(taxonID))
-#arrange(siteID, plotID, taxonID)
-#length(unique(diversity_grouped$taxonID))
-#summarise(n = count())
-#summarise(mean= mean(length(unique(diversity_data$taxonID)), na.rm=TRUE))
-#table(length(unique(diversity_data$taxonID)))  
-#count(unique(diversity_data$taxonID))
-#diversity(diversity_data$taxonID, index = shannon, groups(siteID, plotID))
-# to count unique species nrows(count(unique(vst_mappingandtagging$taxonID)))
-
-
-
-```
 
 graphs
 ```{r}
 #boxplot of mean canopy height before and after a huricaine disturbance
-ggplot(dataframe)+
-  geom_boxplot(aes(x = reorder(domainName, meanAnnualPrecip_mm), y = n_phoso))+
-  labs(x = "x title", y = "y title") + 
-  theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
-    theme(text = element_text(size=10),
-        axis.text.x = element_text(angle=50, hjust=1), axis.title.y = element_text( hjust=-.3))
+ggplot(full_data_CHM_SR_BA)+
+  geom_boxplot(aes(x = disturbance, y = plot_basal_area_hect))+
+  labs(x = "x title", y = "plot basal area (cm^2/hectare)") + 
+  theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    #theme(text = element_text(size=10),
+        #axis.text.x = element_text(angle=50, hjust=1), axis.title.y = element_text( hjust=-.3))
 
 
 #boxplot of mean basal area before and after a huricaine disturbance
+ggplot(full_data_CHM_SR_BA)+
+  geom_boxplot(aes(x = disturbance, y = mean_CHM_plot))+
+  labs(x = "x title", y = "mean canopy height (m)") + 
+  theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+ggplot(full_data_CHM_SR_BA)+
+  geom_boxplot(aes(x = disturbance, y = var_CHM_plot))+
+  labs(x = "x title", y = "mean canopy height (m)") + 
+  theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+ggplot(full_data_CHM_SR_BA)+
+  geom_point(aes(x = species_richness, y = plot_basal_area_hect, color= disturbance))
+
+ggplot(full_data_CHM_SR_BA)+
+  geom_point(aes(x = mean_CHM_plot, y = plot_basal_area_hect, color= disturbance))
+
 
 
 ```
@@ -442,11 +339,23 @@ statistical test
 ```{r}
 #ancova model
 
-biomass_model = lm(basal_area ~ disturbance* species_rich, data = ______) #fu
-summary(full_ANCOVA)
-anova(full_ANCOVA) 
+biomass_model = lm(plot_basal_area_hect ~ disturbance + species_richness + mean_CHM_plot + var_CHM_plot, data = full_data_CHM_SR_BA) #fu
+summary(biomass_model)
 
-CHM_model = lm(CHM ~ disturbance* species_rich, data = soil)
-summary(fit)
+step(biomass_model,  direction="both", trace=1, steps=1000, k = 2)
 
+
+#t.test(y = plot_basal_area_hect, x = disturbance, paired = TRUE, data= full_data_CHM_SR_BA)
+
+#check predictor variables are not correlated
+library("usdm")
+vifstep(na.omit(cbind( full_data_CHM_SR_BA$species_richness , full_data_CHM_SR_BA$mean_CHM_plot , full_data_CHM_SR_BA$var_CHM_plot)), th = 10)
+
+
+
+reduced_model = lm(plot_basal_area_hect ~ species_richness + mean_CHM_plot + species_richness : mean_CHM_plot, data = full_data_CHM_SR_BA)
+
+summary(reduced_model)
+anova(reduced_model)
+reduced_model2= lm(plot_basal_area_hect ~ species_richness + mean_CHM_plot + species_richness : mean_CHM_plot + as.factor(disturbance), data = full_data_CHM_SR_BA)
 ````

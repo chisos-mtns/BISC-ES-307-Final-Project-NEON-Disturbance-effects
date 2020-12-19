@@ -54,7 +54,7 @@ OSBS_centroids_sp <- st_as_sf(OSBS_centroids,
 
 Download the AOP tiles that correspond to OSBS forest plots: 
 ```{r}
-# Before you download, delete any files in the DP3.30015.001/ data path
+# Before downloading, delete any files in the DP3.30015.001/ data path
 #pre-huricaine
 byTileAOP(dpID="DP3.30015.001", site="OSBS", 
           year="2017", 
@@ -226,27 +226,12 @@ plots_chmMean_SR <- left_join(plots_chmMean_all, OSBS_SR)
 
 
 ```{r}
-
-
-
-
-
+#keep individuals with DBH at 130cm & make new variable of just year
 npp_data = vst_apparentindividual%>%
   filter(measurementHeight == 130) %>%
   dplyr::select(date, domainID, siteID, plotID, individualID, plantStatus, stemDiameter)%>%
   mutate( year = format(date, "%Y"))
 
-count = count(npp_data$individualID)
-#mutate (basal area for each stem, dbh/2 ^2 * pi)
-#changes in total live basal area instead of ANPP, filtering alive, basal area = calculate basal area dbh cm^2 (tree area)/m^2 (ground area)
-#then add up, then divide by plot area: 20m x 20m (0.04 ha)
-
-#npp_data%>% group_by(siteID, date["%Y"])%>% summarise(count = count(plotID))
-
-
-
-###### find nearest ####
-##### tower plot ###
 
 
 #Hurricane Irma: Aug 30, 2017 – Sep 12, 2017
@@ -254,40 +239,18 @@ OSBS_veg = npp_data%>%filter(siteID == "OSBS")%>%mutate( disturbance = (ifelse (
 
 OSBS_veg_pre = OSBS_veg%>%filter(disturbance == "before")
 OSBS_veg_post = OSBS_veg%>%filter(disturbance == "after")
-#mutate( if (year<2017) {disturbance = "before"} else if (year>=2017) {disturbance = "after"})
-#count_OSBS = count(OSBS_veg$individualID)
-#OSBS_veg_pre[with(OSBS_veg_pre, order(date, plotID)), ]
+#remove duplicate observations
 single_OSBS_veg_pre = OSBS_veg_pre[!duplicated(OSBS_veg_pre[,c("individualID")]),]
 single_OSBS_veg_post = OSBS_veg_post[!duplicated(OSBS_veg_post[,c("individualID")]),]
-
+#find basal area per tree
 OSBS_diameter_data = full_join(single_OSBS_veg_pre, single_OSBS_veg_post)%>%
   mutate(tree_basal_area = ((stemDiameter/2) ^2 * pi))
- 
+ #find basal area per plot
 OSBS_basal_area =  OSBS_diameter_data %>% dplyr::group_by(plotID, disturbance) %>%dplyr::summarise(n = n(), plot_basal_area_hect = sum(tree_basal_area)/ (.4))
 
 
 
 
-#sum(is.na(single_OSBS_veg_post$stemDiameter))
-
-# Hurricane Michael: October 7, 2018 – October 16, 2018
-#JERC = npp_data%>%filter(siteID == "JERC")%>%mutate( disturbance = (ifelse ((year<2018), "before" ,"after")))
-
-
-################# NEED TO FIGURE OUT HOW TO DIVIDE BY MID-YEAR###################
-# Huricane Maria: Sep 16, 2017 – Oct 2, 2017
-#GUAN = npp_data%>%filter(siteID == "GUAN")
-#test2 = GUAN%>%filter(year==2017)
-
-
-################# MAYBE CUT OUT ##################
-#############
-# wildfire November 13-16, 2016
-#GRSM = npp_data%>%filter(siteID == "GRSM")
-#test3 = GRSM%>%filter(year==2016)
-
-
-# "live" %in% tag
 
 
 full_data_CHM_SR_BA = left_join(plots_chmMean_SR, OSBS_basal_area)
@@ -303,8 +266,9 @@ graphs
 ```{r}
 #boxplot of mean canopy height before and after a huricaine disturbance
 ggplot(full_data_CHM_SR_BA)+
-  geom_boxplot(aes(x = disturbance, y = plot_basal_area_hect))+
-  labs(x = "x title", y = "plot basal area (cm^2/hectare)") + 
+  geom_boxplot(aes(x = reorder(disturbance, desc(disturbance)), y = plot_basal_area_hect))+
+  labs(x= "", y = expression(Basal~ Area~ per~ Plot (cm^{2}/hectare))) + 
+  scale_x_discrete( labels = c("Pre-disturbance", "Post-disturbance"))+ 
   theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
     #theme(text = element_text(size=10),
         #axis.text.x = element_text(angle=50, hjust=1), axis.title.y = element_text( hjust=-.3))
@@ -312,18 +276,35 @@ ggplot(full_data_CHM_SR_BA)+
 
 #boxplot of mean basal area before and after a huricaine disturbance
 ggplot(full_data_CHM_SR_BA)+
-  geom_boxplot(aes(x = disturbance, y = mean_CHM_plot))+
-  labs(x = "x title", y = "mean canopy height (m)") + 
+  geom_boxplot(aes(x = reorder(disturbance, desc(disturbance)), y = mean_CHM_plot))+
+  labs( x= "",y = "Mean Canopy Height (m)"  ) + 
+  scale_x_discrete( labels = c("Pre-disturbance", "Post-disturbance"))+
   theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+#boxplot of  canopy height variance before and after a huricaine disturbance
 ggplot(full_data_CHM_SR_BA)+
   geom_boxplot(aes(x = disturbance, y = var_CHM_plot))+
-  labs(x = "x title", y = "mean canopy height (m)") + 
+  labs(x = "x title", y = "Canopy height variance (m)") +  
+  scale_x_discrete( labels = c("Pre-disturbance", "Post-disturbance"))
   theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+library(RColorBrewer)
+colourCount = length(unique(full_data_CHM_SR_BA$species_richness))
+getPalette = colorRampPalette(brewer.pal(13, "RdBu"))
+ 
+ggplot(mtcars) + 
+  geom_histogram(aes(factor(hp)), fill=getPalette(colourCount)) + 
+  theme(legend.position="right")
 
+  #additionaly plots for exploritory understanding
 ggplot(full_data_CHM_SR_BA)+
-  geom_point(aes(x = species_richness, y = plot_basal_area_hect, color= disturbance))
+  geom_point(aes(x = mean_CHM_plot, y = plot_basal_area_hect, color= factor(species_richness) , fill=getPalette(colourCount)))#+
+  scale_color_brewer(palette="RdBu")
+library(scales)
+ggplot(full_data_CHM_SR_BA)+
+  geom_point(aes(x = mean_CHM_plot, y = plot_basal_area_hect, color= species_richness))+
+  scale_color_gradient2(rescale(full_data_CHM_SR_BA$species_richness, to = c(0, 1), from = range(full_data_CHM_SR_BA$species_richness, na.rm = TRUE, finite = TRUE)))+
+  theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 ggplot(full_data_CHM_SR_BA)+
   geom_point(aes(x = mean_CHM_plot, y = plot_basal_area_hect, color= disturbance))
@@ -334,28 +315,36 @@ ggplot(full_data_CHM_SR_BA)+
 
 
 
-statistical test
+fit model and perform statistical tests
 
 ```{r}
-#ancova model
+#two-sample test to compare pre/post disturbance
+t.test(plot_basal_area_hect ~ disturbance, data= full_data_CHM_SR_BA) #basal area
+t.test(mean_CHM_plot ~ disturbance, data= full_data_CHM_SR_BA) #canopy height
+t.test(var_CHM_plot ~ disturbance, data= full_data_CHM_SR_BA) #canopy variance
+simple_model = lm(  var_CHM_plot ~ disturbance , data = full_data_CHM_SR_BA) #alternative way to consider canopy variance
+summary(simple_model)
 
+
+
+#fit fullancova model
 biomass_model = lm(plot_basal_area_hect ~ disturbance + species_richness + mean_CHM_plot + var_CHM_plot, data = full_data_CHM_SR_BA) #fu
 summary(biomass_model)
 
+
+#use backward stepwise variable selection
 step(biomass_model,  direction="both", trace=1, steps=1000, k = 2)
-
-
-#t.test(y = plot_basal_area_hect, x = disturbance, paired = TRUE, data= full_data_CHM_SR_BA)
 
 #check predictor variables are not correlated
 library("usdm")
 vifstep(na.omit(cbind( full_data_CHM_SR_BA$species_richness , full_data_CHM_SR_BA$mean_CHM_plot , full_data_CHM_SR_BA$var_CHM_plot)), th = 10)
 
 
-
+# fit reduced model with interaction effect
 reduced_model = lm(plot_basal_area_hect ~ species_richness + mean_CHM_plot + species_richness : mean_CHM_plot, data = full_data_CHM_SR_BA)
-
 summary(reduced_model)
+#Residual standard error: 6898 on 42 degrees of freedom
+#Multiple R-squared:  0.3649,	Adjusted R-squared:  0.3195 
+#F-statistic: 8.043 on 3 and 42 DF,  p-value: 0.000239
 anova(reduced_model)
-reduced_model2= lm(plot_basal_area_hect ~ species_richness + mean_CHM_plot + species_richness : mean_CHM_plot + as.factor(disturbance), data = full_data_CHM_SR_BA)
 ````

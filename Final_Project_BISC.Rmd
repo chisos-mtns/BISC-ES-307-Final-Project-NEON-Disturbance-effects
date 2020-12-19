@@ -250,9 +250,7 @@ OSBS_basal_area =  OSBS_diameter_data %>% dplyr::group_by(plotID, disturbance) %
 
 
 
-
-
-
+#join all data files together
 full_data_CHM_SR_BA = left_join(plots_chmMean_SR, OSBS_basal_area)
 
 ```
@@ -288,22 +286,11 @@ ggplot(full_data_CHM_SR_BA)+
   scale_x_discrete( labels = c("Pre-disturbance", "Post-disturbance"))
   theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
-library(RColorBrewer)
-colourCount = length(unique(full_data_CHM_SR_BA$species_richness))
-getPalette = colorRampPalette(brewer.pal(13, "RdBu"))
- 
-ggplot(mtcars) + 
-  geom_histogram(aes(factor(hp)), fill=getPalette(colourCount)) + 
-  theme(legend.position="right")
 
   #additionaly plots for exploritory understanding
 ggplot(full_data_CHM_SR_BA)+
-  geom_point(aes(x = mean_CHM_plot, y = plot_basal_area_hect, color= factor(species_richness) , fill=getPalette(colourCount)))#+
-  scale_color_brewer(palette="RdBu")
-library(scales)
-ggplot(full_data_CHM_SR_BA)+
   geom_point(aes(x = mean_CHM_plot, y = plot_basal_area_hect, color= species_richness))+
-  scale_color_gradient2(rescale(full_data_CHM_SR_BA$species_richness, to = c(0, 1), from = range(full_data_CHM_SR_BA$species_richness, na.rm = TRUE, finite = TRUE)))+
+  scale_color_gradient2()+
   theme_bw()+ theme( panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 ggplot(full_data_CHM_SR_BA)+
